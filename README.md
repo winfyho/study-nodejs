@@ -50,7 +50,7 @@ cnpm使用方法和npm保持一致，只需使用指令**cnpm**
 nodejs是基于JavaScript V8引擎运行的。
 nodejs提供了许多内置模块来处理应用层面和操作系统层面间的通信
 
-### 例子：events模块
+例子：events模块
 - 观察者模式
 - 调用vs抛事件
     - 关键在于“不知道被通知者存在”
@@ -151,3 +151,97 @@ setTimeout(() => {
     }) 
  }, 1000);
 ```
+
+## Promise
+![promise](img/promise.png)
+在chrome执行下面这段代码
+``` js
+(function(){
+    var promise = new Promise(function(resolve,reject){
+        setTimeout(() => {
+            resolve("success")
+        }, 500);
+
+        // resolved状态无法跳转到rejected状态，所以无法被执行
+        // reject(new Error('fail'))
+    })
+    .then(function(res){
+        console.log(res)
+    })
+    .catch(function(err){
+        console.log(err)
+    })
+    
+    setTimeout(() => {
+        console.log(promise)
+    }, 800);
+    
+}())
+```
+.thne和.catch相当于向任务消息队列发布一个待执行callback消息
+当Promise内部的异步/阻塞事件完成后，会查看消息队列是否有callback，如果有则执行队列里的callback回调函数。resolve()和rejece()就是去负责执行队列的callback
+
+**.then 和 .catch**
+- resolved状态的promise会回调后面第一个 .then
+- rejected状态的promise会回调后面第一个 .catch
+- 任何一个rejected状态且后面没有.catch的promise，都会造成浏览器/Node环境的全局错误
+
+
+
+**Promise其实和callback并没有太大差别，但是写法更复杂，那么它优秀的地方在哪里？**
+``` js
+(function(){
+    var promise = new Promise(function(resolve,reject){
+        setTimeout(() => {
+            resolve("success")
+        }, 500);
+    })
+
+    var promise1 = promise.then((res) => {
+        throw new Error()
+    })
+    
+    setTimeout(() => {
+        console.log(promise)  // Promise <resolved>
+        console.log(promise1) // Promise <rejected>
+    }, 800);
+    
+}())
+
+```
+
+- 根据then/catch内部的执行状态，返回一个相同状态的Promise
+    - 如果回调函数最终是throw，返回一个新的rejected状态Promise
+    - 如果回调函数最终是return，返回一个新的resolved状态Promise
+    - 如果回调函数最终是return了一个Promise，该Promise会和回调函数内return的Promise状态保持一致
+
+``` js
+(function(){
+    function interview(round){
+        return new Promise(function(resolve,reject){
+            
+            setTimeout(() => {
+                if(Math.random() > 0.3){
+                    resolve("success")
+                }else{
+                    reject(round)
+                }
+            }, 500);
+        })
+    }
+    interview(1)
+        .then(()=>{
+            return interview(2)
+        }) 
+        .then(()=>{
+            return interview(3)
+        }) 
+        .then(()=>{
+            console.log("面试成功！！！")
+        }) 
+        .catch((round)=>{
+            console.log(`fail at ${round} round`)
+        })
+}())
+```
+上述代码可见，rejected状态的Promise只会执行下面第一个catch
