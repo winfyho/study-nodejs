@@ -1,3 +1,5 @@
+# NodeJs基础
+
 ## Node环境安装
 1. 下载安装包
 2. 配置环境变量PATH
@@ -113,8 +115,10 @@ function interview(callback){
 ## 事件循环Event Loop
 
 ![事件循环概念](img/eventloop.png)
+![Event Loop](img/nodejs.png)
 
-当nodeJs遇到阻塞I/O事件时，会交付给事件循环。由c++线程执行阻塞操作，底层使用了不同操作系统的多线程方案，来完成多个I/O操作。
+当nodeJs遇到阻塞I/O事件时，会交付给事件循环Event Loop。
+由c++线程执行阻塞操作，底层使用了不同操作系统的多线程方案，来完成多个I/O操作。
 当阻塞事件完成时，会发送callback消息给事件队列Event Queue。NodeJs会不断检查队列是否有待执行的callback消息，如果有就执行队列里所有的callback
 
 下面是一个event loop机制的简单实现
@@ -245,3 +249,107 @@ setTimeout(() => {
 }())
 ```
 上述代码可见，rejected状态的Promise只会执行下面第一个catch
+
+## async
+``` js
+console.log(async function(){
+    return 1
+}())
+console.log(function(){
+    return new Promise((resolve,reject)=>{
+        resolve(1)
+    })
+}())
+
+// 输出结果相同
+// Promise { 1 }
+// Promise { 1 }
+```
+上面的例子可以看出两个函数的输出结果相同
+async函数就是一个返回Promise的普通函数，async function是Promise的语法糖的封装
+async内部是return，就是返回一个resolved的Promise。
+async内部是throw，就是返回一个rejected的Promise
+
+## await
+- 以同步的方式写异步
+  - await关键字可以“暂停”async function的执行
+  - await可以以同步的方式获取Promise执行结果
+  - try-catch可以获取await所得到的错误
+
+await获取Promise的resolv结果
+``` js
+(function () {
+    async function asyncFunc() {
+        var content = await new Promise((resolve, reject) => {
+            
+            setTimeout(() => {
+                resolve(6)
+            }, 500);
+        })
+        // 输出6，resolve内的参数
+        console.log('content', content)
+        return 4
+    }
+    var result = asyncFunc()
+    setTimeout(() => {
+        // 由于async函数return 4，所以输出一个resolved状态的Promise
+        // Promise {<resolved>: 4}
+        console.log(result)
+    }, 800);
+}())
+```
+await获取Promise的reject错误，并且抛到try-catch上
+``` js
+(function () {
+    async function asyncFunc() {
+        try {
+            var content = await new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    reject(new Error('4'))
+                }, 500);
+            })
+        } catch (e) {
+            // 输出reject内的Error
+            console.log(e)
+        }
+        // undefined
+        console.log('content', content)
+        return 4
+    }
+    var result = asyncFunc()
+    setTimeout(() => {
+        // Promise {<resolved>: 4}
+        console.log(result)
+    }, 800);
+}())
+```
+
+改造之前的Promise案例
+``` js
+(async function () {
+
+    try {
+        await interview(1)
+        await interview(2)
+        await interview(3)
+
+    } catch (e) {
+        return console.log('fail',e)
+    }
+    console.log('success')
+    
+})()
+
+function interview(round) {
+    return new Promise(function (resolve, reject) {
+
+        setTimeout(() => {
+            if (Math.random() > 0.3) {
+                resolve("success")
+            } else {
+                reject(round)
+            }
+        }, 500);
+    })
+}
+```
